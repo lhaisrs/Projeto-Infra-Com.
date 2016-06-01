@@ -1,0 +1,8 @@
+server_host
+server_port
+arquivo_1
+arquivo_2
+*
+arquivo_3 25
+arquivo_4 120
+
