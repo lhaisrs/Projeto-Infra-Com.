@@ -8,7 +8,7 @@ def Menu():
 	print "1. Status do Cliente"
 	print "2. Sair"
 	print "Escolha um:"
-	Bla()
+
 	while True:
 		opt = raw_input()	
 		if(opt == "1"):
