@@ -1,85 +1,90 @@
 import socket
 import os
+import time
+import sys
+
+from thread import *
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 host = ''
-port = 1246
-jogadas = 0
-chunk_list = []
+port = 1242
+cl = 0 #contador do numero de clientes que ja usaram o servidor
+
+pkt_list = []
 
 def quit():
 
     s.close()
     exit(0)
 	
-	
 
-def getSize(filename):
+def getSize(filename): #usado para retornar o tamanho do arquivo 
     st = os.stat(filename)
     return st.st_size
 
-def Client():
 
-    photo = open('bucky.jpg', 'rb')
+def ClientThread(conn, filename):
 
-    s.connect ( (host,port) )
-    
-    porc = 0.0
-    sent = 0.0
-    chunk = photo.read(1024)
-    chunk_index = 0;
+  photo = open(filename, 'rb')
 
-    while (chunk):
-        
-      porc = sent/getSize('bucky.jpg') * 100  # calcula a porcentagem
-      sent = sent + 1024                      # enviados de 1024 em 1024 bytes
+  porc = 0.0 #porcentagem impressa
+  sent = 0.0 #quantos bytes foram enviados ate o momento
 
-      chunk_list.append(chunk_index)          # adiciona o numero do pacote atual na lista
-      chunk_index = chunk_index + 1           # incrementa o numero do pacote
+  size = getSize(filename)    #tamanho do arquivo de nome filename
+  read_size = size/float(100) #quanto o servidor vai ler por vez do arquivo
+  iread = int(read_size)      #conversao para int do numero acima, para ser usado nas funcoes de comunicacao
 
-      print porc                              # imprime a porcentagem
-      s.send(chunk)        
-      chunk = photo.read(1024)		
-	
+  pkt = photo.read(iread) #le o primeiro pedaco do arquivo
+  pkt_index = 0;          #index do pacote
 
-    photo.close()
-    
-    print chunk_list
-    print getSize('bucky.jpg') 
-    print "Done Sending"
-    quit()
+  while (pkt): #enquanto ainda tem informacao para ler...
+          
+    porc = (sent/size) * 100   #calcula a porcentagem
+    sent = sent + read_size    
+
+    pkt_list.append(pkt_index)     #adiciona o numero do pacote atual na lista
+    pkt_index = pkt_index + 1      #incrementa o numero do pacote
+
+    print '{0:.2f} %\r'.format(porc), #formatacao da porcentagem para sempre imprimir na mesma linha
+    time.sleep(0.2)                 #delay por questao de estetica
+
+    conn.send(pkt)          #enviar o pacote para o cliente
+    pkt = photo.read(iread) #le mais um pedaco do arquivo     
+
+  photo.close() #fecha o arquivo
+  print         #imprime uma nova linha
+
+  print pkt_list #imprime a lista dos pacotes
+ 
+  print "Done Sending to Client" + str(cl)
+  conn.close()
 
 
+def Server(filename):
 
-def Server():
+  try:
+      variavel = (host,port)
+      s.bind( variavel )
+  except socket.error as e:
+      print e
+      exit(0)
 
-    try:
-        variavel = (host,port)
-        s.bind( variavel )
-    except socket.error as e:
-        print e
-        exit(0)
+  s.listen(2)
 
-    s.listen(2)
+  while True:
 
     conn, addr = s.accept()
-    recphoto = open('copy.jpg', 'wb')
-    data = conn.recv(1024)
-    while (data):
+    global cl #contador do numero de clientes que ja usaram o servidor
+    cl = cl + 1
+    
+    start_new_thread(ClientThread,(conn,filename))
 
-      recphoto.write(data)
-      data = conn.recv(1024)
-	
-    recphoto.close()
-    conn.close()
-    quit()
+  conn.close()
+  s.close()
 
-def TicTacToe():
+def ServerMaster():
+  
+  Server('bucky.jpg')
 
-    opt = raw_input('digite s ou c:')
-    if(opt == 's'):
-        Server()
-    else:
-        Client()
 
-TicTacToe()
+ServerMaster()
